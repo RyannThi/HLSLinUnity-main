@@ -5,6 +5,7 @@ Shader "PUCMyShader"
         _MainTex ("Texture", 2D) = "white" {}
         _NormalTex("Texture", 2D) = "white" {}
         _Specular("Specular", Range(-2,2)) = 1
+        _NormalStrength("Normal Strength", Range(-2,2)) = 1
     }
     SubShader
     {
@@ -27,7 +28,7 @@ Shader "PUCMyShader"
                 SamplerState sampler_NormalTex;
 
                 float _Specular;
-
+                float4 _NormalStrength;
 
                 struct AppData
                 {
@@ -55,19 +56,28 @@ Shader "PUCMyShader"
                 }
 
                 float4 frag(VertexData vData) : SV_TARGET
-                { 
+                {
                     float4 color = _MainTex.Sample(sampler_MainTex, vData.uvVAR);
+
+                    float4 normalMap = _NormalTex.Sample(sampler_NormalTex, half2(vData.uvVAR.x + _Time.x, vData.uvVAR.y));
+                    float4 normalMap2 = _NormalTex.Sample(sampler_NormalTex, half2(vData.uvVAR.x, vData.uvVAR.y + _Time.x) * 0.7);
+
+                    normalMap *= normalMap2;
+
+                    half3 normal = vData.normalVAR * normalMap.xzy * _NormalStrength;
 
                     float3 viewDir = normalize(_WorldSpaceCameraPos - vData.positionVAR);
 
                     Light light = GetMainLight();
-                    float intensity = dot(light.direction, vData.normalVAR);
 
-                    float specular = dot(normalize(viewDir + light.direction), vData.normalVAR);
+                    float intensity = dot(light.direction, normal);
 
+                    float specular = max(0, dot(normalize(light.direction), normalMap));
+
+                    //color *= intensity;
                     color += half4(light.color, 1) * saturate(specular) * _Specular;
 
-                    return color * intensity;
+                    return color;
                 }
  
  
