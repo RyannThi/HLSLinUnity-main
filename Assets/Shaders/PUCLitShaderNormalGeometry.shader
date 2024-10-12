@@ -6,11 +6,14 @@ Shader "PUCLitShaderNormalGeometry"
         _NormalTex("Texture", 2D) = "white" {}
         _NormalForce("NormalForce", Range(-2,2)) = 1
         _SpecForce("SpecularForce", Range(0,2)) = 1
+        _grassLength("GrassLenght", Range(0,1)) = 0.5
+        _grassHeight("GrassHeight", Range(0,5)) = 0.5
     }
         SubShader
         {
             Tags { "RenderType" = "Opaque" }
             LOD 100
+            Cull off
             Pass
             {
                 HLSLPROGRAM
@@ -27,8 +30,13 @@ Shader "PUCLitShaderNormalGeometry"
                 SamplerState sampler_MainTex;
                 texture2D _NormalTex;
                 SamplerState sampler_NormalTex;
+
                 float _NormalForce;
                 float _SpecForce;
+
+                float _grassLength;
+                float _grassHeight;
+
                 struct Attributes
                 {
                     float4 position :POSITION;
@@ -36,6 +44,7 @@ Shader "PUCLitShaderNormalGeometry"
                     half3 normal : NORMAL;
                     half4 color : COLOR;
                 };
+
                 struct Varyings 
                 {
                     float4 positionVAR :SV_POSITION;
@@ -62,12 +71,31 @@ Shader "PUCLitShaderNormalGeometry"
                 void geom(triangle Varyings Input[3], inout TriangleStream<Varyings> triStream)
 				{
 					Varyings Output;
-					for (int i = 0; i < 3; i++)
+					Varyings v;
+                    float dist = 0.1;
+                    for(int j = 0; j < 9; j++){
+                        v.positionVAR = Input[0].positionVAR + float4(j * dist + cos(_Time.z + j) * dist, -_grassHeight, 0, 0);
+                        v.locpositionVAR = Input[0].locpositionVAR;
+                        v.uvVAR = Input[0].uvVAR;
+                        v.colorVar = Input[0].colorVar;
+                        v.normalVar = Input[0].normalVar;
+					    triStream.Append(v);
+ 
+                        v.positionVAR= Input[0].positionVAR + float4(-_grassLength + j * dist, 0, 0, 0);
+                        v.colorVar = Input[0].colorVar - float4(0.2, 0.2, 0.2, 0);
+					    triStream.Append(v);
+                        v.positionVAR= Input[0].positionVAR + float4(_grassLength + j * dist, 0, 0, 0);
+                        v.colorVar = Input[0].colorVar - float4(0.2, 0.2, 0.2, 0);
+					    triStream.Append(v);
+                    }
+                    for (int i = 0; i < 3; i++)
 					{
 						Output = Input[i];
-						triStream.Append(Output);
+					    triStream.Append(Output);
 					}
+ 
 				}
+				
  
                 half4 frag(Varyings Input) :SV_TARGET
                 { 
